@@ -44,3 +44,13 @@
 
 (test (interp (desugar (bminusS (numS 2) (numS 1)))) 1)
 (test (interp (desugar (uminusS (numS 2)))) -2)
+
+(define-type BooleanC
+  [boolC (b : boolean)])
+
+(define (condition [b : BooleanC]) : boolean
+  (type-case BooleanC b
+             [boolC (b) b]))
+
+(test (condition (boolC #t)) #t)
+(test (condition (boolC #f)) #f)
