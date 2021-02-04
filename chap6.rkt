@@ -69,9 +69,8 @@
                     (fdC 'double 'x (plusC (idC 'x) (idC 'x)))))
       22)
 
-;; Test does not verify error, this is intended to fail
-(test (interp (appC 'f1 (numC 3))
+(test/exn (interp (appC 'f1 (numC 3))
               mt-env
               (list (fdC 'f1 'x (appC 'f2 (numC 4)))
                     (fdC 'f2 'y (plusC (idC 'x) (idC 'y)))))
-      0)
+      "lookup: failed to find symbol")
