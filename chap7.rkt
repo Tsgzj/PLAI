@@ -6,7 +6,7 @@
   [appC (fun : ExprC) (arg : ExprC)]
   [plusC (l : ExprC) (r : ExprC)]
   [multC (l : ExprC) (r : ExprC)]
-  [fdC (name : symbol) (arg : symbol) (body : ExprC)])
+  [lamC (arg : symbol) (body : ExprC)])
 
 (define-type Binding
   [bind (name : symbol) (val : Value)])
@@ -15,7 +15,7 @@
 
 (define-type Value
   [numV (n : number)]
-  [funV (name : symbol) (arg : symbol) (body : ExprC)])
+  [closV (arg : symbol) (body : ExprC) (env : Env)])
 
 (define mt-env empty)
 
@@ -45,21 +45,27 @@
   (type-case ExprC e
              [numC (n) (numV n)]
              [idC (n) (lookup n env)]
-             [fdC (n a b) (funV n a b)]
+             [lamC (a b) (closV a b env)]
              [appC (f a) (local ([define fd (interp f env)])
-                                 (interp (funV-body fd)
-                                         (extend-env (bind (funV-arg fd)
+                                 (interp (closV-body fd)
+                                         (extend-env (bind (closV-arg fd)
                                                            (interp a env))
-                                                     mt-env)))]
+                                                     (closV-env fd))))]
              [plusC (l r) (num+ (interp l env) (interp r env))]
              [multC (l r) (num* (interp l env) (interp r env))]))
 
-(test (interp (plusC (numC 10) (appC (fdC 'const5 '_ (numC 5)) (numC 10)))
+(test (interp (plusC (numC 10) (appC (lamC '_ (numC 5)) (numC 10)))
               mt-env)
       (numV 15))
 
-(test/exn (interp (appC (fdC 'f1 'x (appC (fdC 'f2 'y (plusC (idC 'x) (idC 'y)))
-                                          (numC 4)))
-                        (numC 3))
+(test (interp (appC (lamC 'x (appC (lamC 'y (plusC (idC 'x) (idC 'y)))
+                                   (numC 4)))
+                    (numC 3))
+              mt-env)
+      (numV 7))
+
+;; Capture-free substitution
+(test/exn (interp (appC (appC (lamC 'f (lamC 'x (appC (idC 'f) (numC 10))))
+                    (lamC 'y (plusC (idC 'x) (idC 'y)))) (numC 5))
                   mt-env)
-          "name not found")
+      "lookup: failed to find symbol")
