@@ -15,7 +15,37 @@
 (define-type Value
   [numV (n : number)]
   [closV (arg : symbol) (body : ExprC) (env : Env)]
-  [boxV (v : Value)])
+  [boxV (l : Location)])
+
+(define-type-alias Location number)
+
+(define-type Binding
+  [bind (name : symbol) (val : Location)])
+
+(define-type-alias Env (listof Binding))
+(define mt-env empty)
+(define extend-env cons)
+
+(define-type Storage
+  [cell (location : Location) (val : Value)])
+
+(define-type-alias Store (listof Storage))
+(define mt-store empty)
+(define override-store cons)
+
+(define (lookup [sym : symbol] [env : Env]) : Location
+   (cond
+    [(empty? env) (error 'lookup "failed to find symbol")]
+    [else (cond
+            [(equal? sym (bind-name (first env))) (bind-val (first env))]
+            [else (lookup sym (rest env))])]))
+
+(define (fetch [loc : Location] [sto : Store]) : Value
+   (cond
+    [(empty? sto) (error 'fetch "failed to find location")]
+    [else (cond
+            [(equal? loc (cell-location (first sto))) (sell-val (first sto))]
+            [else (fetch loc (rest sto))])]))
 
 (define (interp [expr : ExprC] [env : Env]) : Value
   (type-case ExprC expr
