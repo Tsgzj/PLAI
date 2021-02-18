@@ -30,6 +30,10 @@
   [cell (location : Location) (val : Value)])
 
 (define-type-alias Store (listof Storage))
+
+(define-type Result
+  [v*s (v : Value) (s : Store)])
+
 (define mt-store empty)
 (define override-store cons)
 
@@ -44,13 +48,13 @@
    (cond
     [(empty? sto) (error 'fetch "failed to find location")]
     [else (cond
-            [(equal? loc (cell-location (first sto))) (sell-val (first sto))]
+            [(equal? loc (cell-location (first sto))) (cell-val (first sto))]
             [else (fetch loc (rest sto))])]))
 
-(define (interp [expr : ExprC] [env : Env]) : Value
+(define (interp [expr : ExprC] [env : Env] [sto : Storage]) : Result
   (type-case ExprC expr
-             [numC (n) (numV n)]
-             [idC (n) (lookup n env)]
+             [numC (n) (v*s (numV n) sto)]
+             [idC (n) (v*s (fetch (lookup n env) sto) sto)]
              [appC (f a) (local ([define f-value (interp f env)])
                            (interp (closV-body f-value)
                                    (extend-env (bind (closV-arg f-value)
@@ -58,8 +62,9 @@
                                                (closV-env f-value))))]
              [plusC (l r) (num+ (interp l env) (interp r env))]
              [multC (l r) (num* (interp l env) (interp r env))]
-             [lamC (a b) (closV a b env)]
+             [lamC (a b) (v*s (closV a b env) sto)]
              [boxC (a) (boxV (interp a env))]
              [unboxC (a) (boxV-V (interp a env))]
              <setboxC-case>
-             <seqC-case>))
+             [setq (b1 b2) (type-case Result (interp b1 env sto)
+                                      [v*s (v-b1 s-b1) (interp b2 env s-b2)])]))
